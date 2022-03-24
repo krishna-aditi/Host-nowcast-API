@@ -77,8 +77,6 @@ google-resumable-media==2.3.2
 googleapis-common-protos==1.56.0
 grpcio==1.43.0
 h11==0.13.0
-=======
-# external requirements
 click
 Sphinx
 coverage
@@ -87,7 +85,6 @@ flake8
 tensorflow==2.1.0
 pandas
 numpy
->>>>>>> e047b5cfc637875e1e0bdff3bcd75f2067b5645b
 h5py==2.8.0
 httplib2==0.20.4
 httptools==0.3.0
