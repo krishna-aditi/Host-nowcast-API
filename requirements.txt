@@ -35,7 +35,6 @@ click
 Sphinx
 coverage
 flake8
-tensorflow==2.1.0
 pandas
 numpy
 h5py==2.8.0
