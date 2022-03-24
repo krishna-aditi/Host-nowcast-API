@@ -23,9 +23,9 @@ class NowCastParams(BaseModel):
     radius: float
     time_utc: str
     catalog_path: str = "CATALOG.csv"
-    data_path: str = "C:\\Users\\krish\\Documents\\Northeastern University\\Spring22\\DAMG 7245\\Assignment-4\\sevir"
+    data_path: str = "sevir"
     out_path: str = "output"
-    model_path: str = "models\\nowcast"
+    model_path: str = "models/nowcast"
     model_type: str = "gan"
     closest_radius: str = 'False'
 
