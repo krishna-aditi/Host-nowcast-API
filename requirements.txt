@@ -1,5 +1,4 @@
 absl-py==1.0.0
-aiobotocore==2.1.2
 aiohttp==3.8.1
 aioitertools==0.10.0
 aiosignal==1.2.0
