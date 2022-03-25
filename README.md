@@ -1,7 +1,7 @@
 Hosting SEVIR Nowcast API using Streamlit and Heroku
 ==============================
 
-Report link (GoogleDoc): https://docs.google.com/document/d/1XSUotbV7bAod1QYp7f28zVP2qf2TTP5Fij_wSKRQ-ww/edit?usp=sharing
+Report link (GoogleDoc): https://docs.google.com/document/d/1c7gdJsKIgaiENgDLAJ5hapSaJWJ9BEk5nKN7KPAmXxY/edit?usp=sharing
 
 ============================================================
 
@@ -17,15 +17,6 @@ A better approach to solving this problem is by using the SEVIR Nowcast model wh
 
 The goal of the project is to implement a REST API to execute the GAN model, which takes a sequence of 13 images as input and generates 12 images as output. The end users, who are a bunch of developers who want to integrate our API with their system, pass a JSON file as a blueprint with all required parameters through CURL, POSTMAN, or a Python-Client to execute the model. 
 
-#### Assumptions
-
-Scope for false alarms or misses
-Area of interest parameters, i.e. llcrnrlat, llcrnrlon, urcrnrlat, urcrnrlon format match the ones stored in the CATALOG.csv file
-Data is available for the user specified datatime input
-Enough time to download the specific raw data (h5 file) for the user specified parameters
-
-The API can be used as a foundation to be built upon and integrated with the existing Electronic Flight Display (EFD) or Multi-Function Display (MFD) that gives the pilot access to several data links to weather services that are made available through multiple resources. Along with Graphical NEXRAD data, city forecast data, graphical wind data, the system will also have near-term forecasted images for the requested area of interest and time.
-
 #### Requirements
 
 To test pretrained models and train API requires 
@@ -34,21 +25,22 @@ To test pretrained models and train API requires
 - tensorflow 2.1.0
 - pandas
 - numpy
+- Heroku
+- Deta
+- Streamlit
 ```
 To visualize the outputs basemap library is required, which needs to following libraries
 ```
 - h5py 2.8.0
 - matplotlib 3.2.0
 ```
-#### Sample outputs
+#### Streamlit
 
-1. Test case 1:
-
-![](https://github.com/krishna-aditi/Nowcast-API-using-FastAPI/blob/main/reports/figures/latest_nowcast_display_30.54711887_-92.28496258.gif)
-
-2. Test case 2:
-
-![](https://github.com/krishna-aditi/Nowcast-API-using-FastAPI/blob/main/reports/figures/latest_nowcast_display_30.58070007_-91.57206541.gif)
+- Run the streamlit app using command 
+```
+streamlit run app.py
+```
+- You can access the app from your browser on https://localhost:8501
 
 #### References
 
@@ -56,7 +48,11 @@ To visualize the outputs basemap library is required, which needs to following l
 - Talks # 8: Sebastián Ramírez; Build a machine learning API  from scratch  with FastAPI (https://www.youtube.com/watch?v=1zMQBe0l1bM&ab_channel=AbhishekThakur)
 - making gif from images using imageio in python - Stack Overflow (https://stackoverflow.com/questions/41228209/making-gif-from-images-using-imageio-in-python)
 - Testing - FastAPI (https://fastapi.tiangolo.com/tutorial/testing/)
-
+- https://www.youtube.com/watch?v=L0aXq0BEjbI&ab_channel=MarceloTrylesinski
+- https://docs.streamlit.io/streamlit-cloud/get-started/deploy-an-app
+- https://www.youtube.com/watch?v=QdhwYWwYfc0&ab_channel=rithmic
+- https://devcenter.heroku.com/articles/reducing-the-slug-size-of-play-2-x-applications
+- https://fastapi.tiangolo.com/deployment/deta/
 
 Project Organization
 ------------
@@ -77,7 +73,6 @@ Project Organization
     ├── reports            <- Screenshots
     │   ├── figures
     |       ├── Curl-1.png
-    |       ├── pytest_command.png
     |       ├── response.png
     │       └── Uvicorn.png
     │
