@@ -61,6 +61,7 @@ Deta — “the cloud for doers and dreamers” as mentioned on its home page �
 - https://www.youtube.com/watch?v=QdhwYWwYfc0&ab_channel=rithmic
 - https://devcenter.heroku.com/articles/reducing-the-slug-size-of-play-2-x-applications
 - https://fastapi.tiangolo.com/deployment/deta/
+- https://devcenter.heroku.com/articles/error-codes#h10-app-crashed
 
 Project Organization
 ------------
