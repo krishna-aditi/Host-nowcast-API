@@ -42,6 +42,14 @@ streamlit run app.py
 ```
 - You can access the app from your browser on https://localhost:8501
 
+#### Heroku 
+
+Heroku is a container-based cloud Platform as a Service (PaaS). Developers use Heroku to deploy, manage, and scale modern apps. Our platform is elegant, flexible, and easy to use, offering developers the simplest path to getting their apps to market. Heroku has a size limitation of 500MBs, due to which it was not possible to host the SEVIR Nowcast API on the server. This slugsize includes all the dependencies and the build of the API, which exceeds 500MBs under all circumstances.
+
+#### Deta
+
+Deta — “the cloud for doers and dreamers” as mentioned on its home page — is a relatively new and fully free cloud service provider. It offers a developer-friendly interface that allows you to deploy your program to the cloud in a matter of seconds. 
+
 #### References
 
 - First Steps - FastAPI (https://fastapi.tiangolo.com/tutorial/first-steps/)
