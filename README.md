@@ -3,7 +3,7 @@ Hosting SEVIR Nowcast API using Streamlit and Heroku
 
 Report link (GoogleDoc): https://docs.google.com/document/d/1c7gdJsKIgaiENgDLAJ5hapSaJWJ9BEk5nKN7KPAmXxY/edit?usp=sharing
 
-============================================================
+===============================================================================================
 
 Weather briefing is a vital part of any flight preparation. The National Weather Service (NWS), Federal Aviation Administration (FAA), Department of Defense and other aviation groups are responsible for coherent and accurate weather reporting. The combined efforts of thorough scientific study and modeling techniques are able to predict the weather patterns with increasing accuracy. These weather forecasts enable pilots to make informed decisions regarding weather and flight safety.
 
