@@ -12,79 +12,244 @@ import h5py
 import dateutil.parser
 import matplotlib as mpl
 import pandas as pd
+import gcsfs
 from geopy import distance
+import datetime
 import imageio
+import tempfile
+#mpl.use("TkAgg")
 import matplotlib.pyplot as plt
-plt.rcParams["figure.figsize"] = (10,10)
+import io
+plt.rcParams["figure.figsize"] = (8,8)
 
 ##############################################################################
 # Filtering Catalog 
 
 def filterCatalog(lat, lon, radius, time_utc, catalog_path, closest_radius):
-    # read catalog
-    catalog = pd.read_csv(catalog_path, parse_dates = ['time_utc'], low_memory = False)
-    
-    # parse date
+    # Read CATALOG from cloud
+    catalog = readDataFromCloud(file_path= catalog_path, file_type='catalog')
     time = dateutil.parser.parse(time_utc)
-    
-    # image_type filter
-    catalog = catalog[catalog.img_type == 'vil']
+    catalog = catalog[catalog.img_type=='vil']
     
     # datetime filter
     catalog = catalog.loc[(catalog.time_utc.dt.hour <= time.hour)&(catalog.time_utc.dt.hour >= time.hour - 1)]
     
-    catalog = catalog[catalog.pct_missing == 0]
-    if len(catalog) == 0:
+    # pct_missing filter
+    catalog = catalog[catalog.pct_missing==0]
+    if len(catalog)==0:
         raise Exception('Catalog Error: Requested time not present in the given location')
     
-    # aoi filter, get center lat/lon
+    # aoi filter
     catalog['cntrlat'] = catalog.apply(lambda row: (row.llcrnrlat + row.urcrnrlat)/2, axis=1)
     catalog['cntrlon'] = catalog.apply(lambda row: (row.llcrnrlon + row.urcrnrlon)/2, axis=1)
     
-    # applying geopy.diatance.distance
+    # Calculate distance using Geopy
     catalog['distance'] = catalog.apply(lambda row: distance.distance((row.cntrlat,row.cntrlon), (lat,lon)).miles, axis=1)
+    # Sort values to get shortest distance
     catalog = catalog.sort_values(by=['distance'])
     
-    # next closest point check
-    if closest_radius == True:
+    if closest_radius==True:
         close_dist = catalog.iloc[0].distance
-        catalog = catalog[catalog.distance <= close_dist]
+        catalog = catalog[catalog.distance<=close_dist]
     else:
-        catalog = catalog[catalog.distance < radius]
-        if len(catalog) == 0:
+        catalog = catalog[catalog.distance<radius]
+        if len(catalog)==0:
             raise Exception('Catalog Error: Requested location not present in the given radius. Try increasing the radius or set closest_radius=True in the query')
-    
+       
     catalog = catalog.iloc[0]
-    return str(catalog.file_name), int(catalog.file_index)
+    return str(catalog.file_name), int(catalog.file_index), str(catalog.time_utc)
 
-############################################################################## 
-# Read Data from filename and index
-
-def readData(filename, fileindex, data_path):
-    file = os.path.join(data_path, filename)
-    if not os.path.exists(file):
-        raise Exception(f'Data Error: {file} does not exist')
+##############################################################################
+# Google Cloud Storage Functions
+#data_path = 'sevir-vil/'
+#filename = 'vil/2019/SEVIR_VIL_STORMEVENTS_2019_0101_0630.h5'
+#filename = 'CATALOG.csv'
+#filename = 'models/nowcast/gan_generator.h5'
+def readDataFromCloud(file_path, file_type, fileindex=0):
+    project_name = 'Assignment-4'
+    credentials = "cred.json"
+    FS = gcsfs.GCSFileSystem(project=project_name, token=credentials)
     try:
-        f = h5py.File(file,'r')
-        data = f['vil'][fileindex]
-        x1,x2,x3 = data[:,:,:13], data[:,:,13:26], data[:,:,26:39]
+        with FS.open(file_path, 'rb') as data_file:
+            if file_type=='catalog':
+                catalog = pd.read_csv(data_file,parse_dates=['time_utc'],low_memory=False)
+                return catalog
+            elif file_type=='model':
+                model_file = h5py.File(data_file,'r')
+                return tf.keras.models.load_model(model_file, compile=False, custom_objects = {"tf": tf})
+            elif file_type=='data':
+                f = h5py.File(data_file,'r')
+                try:
+                    data = f['vil'][fileindex]
+                    x1,x2,x3 = data[:,:,:13], data[:,:,13:26], data[:,:,26:39]
+                except Exception:
+                    raise Exception(f'Data Error: {file_path} File Corrupt. Check fileindex {fileindex}')
+                return np.stack((x1,x2,x3))
+            else:
+                return data_file.open()
     except Exception:
-        raise Exception(f'Data Error: {file} is corrupt. Please request another time or AOI')
-    return np.stack((x1,x2,x3))  
+        raise Exception(f'Data Error: Could not find the file {file_path}')
+
+def writeDataToCloud(data, file_path, file_type,time_utc=''):
+    project_name = 'Assignment-4'
+    credentials = "cred.json"
+    FS = gcsfs.GCSFileSystem(project=project_name, token=credentials)
+    file_path = file_path.replace('\\','/')
+    try:
+        if file_type=='data': 
+            try:
+                # For storing output as H5 file
+                temp = tempfile.NamedTemporaryFile(delete=False,mode='w',suffix='.h5') 
+                hf = h5py.File(temp.name, 'w')
+                hf.create_dataset('nowcast_predict', data = data)
+                hf.close()
+                FS.upload(temp.name, file_path)
+                temp.close()
+                os.unlink(temp.name)
+            except:
+                raise Exception('IO Error: Could not write H5 file. Check the out_path correctly or try reinstalling h5py')
+        elif file_type=='gif':
+            try:
+                # For storing output as GIF
+                # Store predicted images in a temp file, use delete = False because we need to store these images to make a GIF
+                # If delete = True then all temp data gets deleted as soon as you temp.close()
+                temp = tempfile.NamedTemporaryFile(delete=False, mode='w',suffix='.gif')
+                count = 0
+                # From visualize_result function in AnalyzeNowcast notebook
+                cmap_dict = lambda s: {'cmap':get_cmap(s,encoded=True)[0],
+                                        'norm':get_cmap(s,encoded=True)[1],
+                                        'vmin':get_cmap(s,encoded=True)[2],
+                                        'vmax':get_cmap(s,encoded=True)[3]}
+                images = []
+                for pred in data:
+                    for i in range(pred.shape[-1]):
+                        buf = io.BytesIO()
+                        plt.imshow(pred[:,:,i],**cmap_dict('vil'))
+                        plt.axis('off')
+                        plt.title(f'Nowcast prediction at time {time_utc}+{(count+1)*5}minutes')
+                        plt.savefig(buf, bbox_inches='tight')
+                        buf.seek(0)
+                        images.append(imageio.imread(buf))
+                        plt.close()
+                        buf.close()
+                        count+=1
+                # Store coloured images into temp.name
+                imageio.mimsave(temp.name, images)
+                # Upload using GCSFileSystem object
+                FS.upload(temp.name, file_path)
+                temp.close()
+                # Delete file path of temp file
+                os.unlink(temp.name)
+                # Saving files as GIF (https://stackoverflow.com/questions/41228209/making-gif-from-images-using-imageio-in-python)
+            except:
+                raise Exception('IO Error: Could not write GIF. Try reinstalling matplotlib (version<=3.2.0) and imageio')
+        else:
+            pass
+        # Return cloud path of saved GIF file
+        return FS.url(file_path).replace('googleapis','cloud.google')
+    except Exception:
+        raise Exception('Output Error: Error writing data to Google Cloud Bucket')
 
 ############################################################################## 
 # Defining our own data generator with the help of make_nowcast_dataset 
 # Functions to filter the catalog and reading data in desired format
 
-def get_nowcast_data(lat, lon, radius, time_utc, catalog_path, data_path,closest_radius):
-    
+def get_nowcast_data(lat, lon, radius, time_utc, catalog_path, data_path, closest_radius, force_refresh):
+    # "exists" == True ==> if output GIF already present in output location
+    exists = False
+    # Access GCP bucket
+    project_name = 'Assignment-4'
+    credentials = "cred.json"
+    FS = gcsfs.GCSFileSystem(project=project_name, token=credentials)
+    # Threshold to check if GIFs are older than x minutes
+    threshold = 10*60*60
     try:    
-        filename, fileindex = filterCatalog(lat, lon, radius, time_utc, catalog_path, closest_radius)
-        data = readData(filename, fileindex, data_path)
+        filename, fileindex, filetime = filterCatalog(lat, lon, radius, time_utc, catalog_path, closest_radius)
+        if not force_refresh:
+            try:
+                # Check if files are older than 120 minutes
+                outfiles = FS.ls('sevir-vil/output')[1:]
+                expired_files = [file for file in outfiles if (datetime.datetime.now() - dateutil.parser.parse(file.split('/')[-1].split('_')[2][:-4])).seconds>threshold]
+                # If files are expired, flush them from bucket
+                for filerm in expired_files:
+                    FS.rm_file(filerm)
+                # Ignoring 1st element of list, which is the sevir-vil/output bucket itself    
+                outfiles = FS.ls('sevir-vil/output')[1:]
+                # Outfiles contains of list of files in output folder for the same location and date as requested by user
+                # If existing output GIF has same naming convention as the one expected for the given filename, then add to list
+                outfiles = [file for file in outfiles if 'Predicted'+filename.split('/')[-1].split('.')[0].replace('_','')+str(fileindex) == file.split('/')[-1].split('_')[0] and file.endswith('.gif')]
+                for file in outfiles:
+                    # Date in exsisting output files (stored in their name after '_')
+                    
+                    # Time_utc on input h5 file initially
+                    outdate = dateutil.parser.parse(file.split('_')[1])
+                    # Output generation datetime
+                    gendate = dateutil.parser.parse(file.split('_')[2][:-4])
+                    # User input datetime
+                    userdate = dateutil.parser.parse(time_utc)
+                    # Check if userdate and outputdate is greater than 2 hours
+                    if (userdate - outdate).seconds < 2*60*60:
+                        # Matching file found
+                        print('Got a hit')
+                        # Check if file is older than acceptable threshold
+                        if (datetime.datetime.now() - gendate).seconds < threshold:
+                            # Match found!
+                            print('With in threshold')
+                            exists = True
+                            break
+            except Exception:
+                # If matching file not found, need to generate new output, use force_refresh!
+                raise Exception('Output Catalog Error: Try using force_refresh="True"')
+            if exists == True:
+                # Return matching file link is there is a hit
+                print('Returning File')
+                return exists, [], FS.url(file).replace('googleapis','cloud.google')
+            
+        path = os.path.join(data_path,filename) # comes as 'sevir-vil\\SEVIR_VIL_STORMEVENTS_2019_0101_0630.h5'
+        data = readDataFromCloud(file_path=path.replace('\\','/'),fileindex=fileindex, file_type='data') # returns filename as 'sevir-vil/SEVIR_VIL_STORMEVENTS_2019_0101_0630.h5'
+
     except Exception as e:
         raise Exception(e)
     
-    return data
+    return exists, data, filename.split('/')[-1].split('.')[0].replace('_','')+f'{fileindex}_'+filetime
+
+##############################################################################
+# Initializing and running the model
+# Link to download pre-trained model (https://www.dropbox.com/s/9y3m4axfc3ox9i7/gan_generator.h5?dl=0Downloading%20mse_and_style.h5)
+
+def run_model(data, model_path, scale, model_type):
+    MEAN=33.44
+    SCALE=47.54
+    data = (data.astype(np.float32)-MEAN)/SCALE
+    norm = {'scale':47.54, 'shift':33.44}
+    file = None
+    # Model type
+    try:
+        if model_type == 'gan':
+            file = os.path.join(model_path, 'gan_generator.h5')
+            model = readDataFromCloud(file_path=file.replace('\\','/'), file_type='model')
+        elif model_type == 'mse':    
+            file  = os.path.join(model_path, 'mse_model.h5')
+            model = readDataFromCloud(file_path=file.replace('\\','/'), file_type='model')
+        elif model_type == 'style':    
+            file = os.path.join(model_path, 'style_model.h5')
+            model = readDataFromCloud(file_path=file.replace('\\','/'), file_type='model')
+        elif model_type in ['mse+style', 'style+mse']:    
+            file = os.path.join(model_path, 'mse_and_style.h5')
+            model = readDataFromCloud(file_path=file.replace('\\','/'), file_type='model')
+        else:
+            raise Exception('Model Error: Did not find the specified model for nowcast!')
+    except:
+        raise Exception(f"Model Error: Model file {file} does not exist")
+        
+    # Output
+    try:
+        output = model.predict(data)
+        if scale:
+            output = output*norm['scale'] + norm['shift']
+    except:
+        raise Exception('Model Error: Run Error in Model. Try re-downloading the model file')
+    return output
 
 ##############################################################################
 # Display VIL images through matplotlib
@@ -128,91 +293,3 @@ def vil_cmap(encoded = True):
     norm = mpl.colors.BoundaryNorm(lev, cmap.N)
     return cmap, norm
        
-##############################################################################
-# Create multiple temporary images of VIL and save as GIF, then delete temp files
-
-def save_gif(data, file_name, time_utc):
-    try:
-        count = 0
-        # From visualize_result function in AnalyzeNowcast notebook
-        cmap_dict = lambda s: {'cmap':get_cmap(s,encoded=True)[0],
-                                'norm':get_cmap(s,encoded=True)[1],
-                                'vmin':get_cmap(s,encoded=True)[2],
-                                'vmax':get_cmap(s,encoded=True)[3]}
-        filenames = []
-        for pred in data:
-            for i in range(pred.shape[-1]):
-                plt.imshow(pred[:,:,i],**cmap_dict('vil'))
-                # plt.imshow(pred[:,:,i],cmap="gist_heat")
-    #            plt.colorbar(c)
-                plt.axis('off')
-                plt.title(f'Nowcast prediction at time {time_utc}+{(count+1)*5}minutes')
-                plt.savefig(f"Pred_{time_utc.replace(':','')}_{count}.png", bbox_inches='tight')
-                plt.close()
-                filenames.append(f"Pred_{time_utc.replace(':','')}_{count}.png")
-                count+=1
-        # Saving files as GIF (https://stackoverflow.com/questions/41228209/making-gif-from-images-using-imageio-in-python)
-    except:
-        raise Exception('IO Error: Could not write GIF. Try reinstalling matplotlib (version<=3.2.0)')
-    try:    
-        images = []
-        for filename in filenames:
-            images.append(imageio.imread(filename))
-            os.remove(filename)
-        imageio.mimsave(file_name, images)
-    except:
-        raise Exception('IO Error: Could not write GIF. Check imageio library in your environment')
-    return file_name
-
-
-
-##############################################################################
-# Saving the model's output as h5
-
-def save_h5(data, file_name):
-    try:
-        hf = h5py.File(file_name, 'w')
-        hf.create_dataset('nowcast_predict', data = data)
-        hf.close()
-    except:
-        raise Exception('IO Error: Could not write H5 file. Check the out_path correctly or try reinstalling h5py')
-    return file_name
-
-##############################################################################
-# Initializing and running the model
-# Link to download pre-trained model (https://www.dropbox.com/s/9y3m4axfc3ox9i7/gan_generator.h5?dl=0Downloading%20mse_and_style.h5)
-
-def run_model(data, model_path, scale, model_type):
-    MEAN=33.44
-    SCALE=47.54
-    data = (data.astype(np.float32)-MEAN)/SCALE
-    norm = {'scale':47.54, 'shift':33.44}
-    file = None
-    # Model type
-    try:
-        if model_type == 'gan':
-            file = os.path.join(model_path, 'gan_generator.h5')
-            model = tf.keras.models.load_model(file, compile=False, custom_objects = {"tf": tf})
-        elif model_type == 'mse':    
-            file  = os.path.join(model_path, 'mse_model.h5')
-            model = tf.keras.models.load_model(file, compile=False, custom_objects = {"tf": tf})
-        elif model_type == 'style':    
-            file = os.path.join(model_path, 'style_model.h5')
-            model = tf.keras.models.load_model(file, compile=False, custom_objects = {"tf": tf})
-        elif model_type in ['mse+style', 'style+mse']:    
-            file = os.path.join(model_path, 'mse_and_style.h5')
-            model = tf.keras.models.load_model(file, compile=False, custom_objects = {"tf": tf})
-        else:
-            raise Exception('Model Error: Did not find the specified model for nowcast!')
-    except:
-        raise Exception(f'Model Error: Model file {model_type} does not exist')
-        
-    # Output
-    try:
-        output = model.predict(data)
-        if scale:
-            output = output*norm['scale'] + norm['shift']
-    except:
-        raise Exception('Model Error: Run Error in Model. Try re-downloading the model file')
-    return output
-
