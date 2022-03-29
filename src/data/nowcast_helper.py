@@ -65,6 +65,23 @@ def filterCatalog(lat, lon, radius, time_utc, catalog_path, closest_radius):
 #filename = 'vil/2019/SEVIR_VIL_STORMEVENTS_2019_0101_0630.h5'
 #filename = 'CATALOG.csv'
 #filename = 'models/nowcast/gan_generator.h5'
+    
+def flushCache(folder, file):
+    try:
+        project_name = 'Assignment-4'
+        credentials = "cred.json"
+        FS = gcsfs.GCSFileSystem(project=project_name, token=credentials)
+        
+        files = FS.ls(folder)
+        
+        flushFile = [f for f in files if file in f]
+        
+        for f in flushFile:
+            FS.rm_file(f)
+        return 1
+    except Exception:
+        raise Exception('Cache Error: Could not flush Cache')
+    
 def readDataFromCloud(file_path, file_type, fileindex=0):
     project_name = 'Assignment-4'
     credentials = "cred.json"
@@ -154,7 +171,7 @@ def writeDataToCloud(data, file_path, file_type,time_utc=''):
 # Defining our own data generator with the help of make_nowcast_dataset 
 # Functions to filter the catalog and reading data in desired format
 
-def get_nowcast_data(lat, lon, radius, time_utc, catalog_path, data_path, closest_radius, force_refresh):
+def get_nowcast_data(lat, lon, radius, time_utc, catalog_path, data_path, closest_radius, threshold_time_minutes, force_refresh):
     # "exists" == True ==> if output GIF already present in output location
     exists = False
     # Access GCP bucket
@@ -162,19 +179,13 @@ def get_nowcast_data(lat, lon, radius, time_utc, catalog_path, data_path, closes
     credentials = "cred.json"
     FS = gcsfs.GCSFileSystem(project=project_name, token=credentials)
     # Threshold to check if GIFs are older than x minutes
-    threshold = 10*60*60
+    threshold = threshold_time_minutes*60
     try:    
         filename, fileindex, filetime = filterCatalog(lat, lon, radius, time_utc, catalog_path, closest_radius)
         if not force_refresh:
             try:
-                # Check if files are older than 120 minutes
-                outfiles = FS.ls('sevir-vil/output')[1:]
-                expired_files = [file for file in outfiles if (datetime.datetime.now() - dateutil.parser.parse(file.split('/')[-1].split('_')[2][:-4])).seconds>threshold]
-                # If files are expired, flush them from bucket
-                for filerm in expired_files:
-                    FS.rm_file(filerm)
                 # Ignoring 1st element of list, which is the sevir-vil/output bucket itself    
-                outfiles = FS.ls('sevir-vil/output')[1:]
+                outfiles = FS.ls('sevir-vil/cache')[1:]
                 # Outfiles contains of list of files in output folder for the same location and date as requested by user
                 # If existing output GIF has same naming convention as the one expected for the given filename, then add to list
                 outfiles = [file for file in outfiles if 'Predicted'+filename.split('/')[-1].split('.')[0].replace('_','')+str(fileindex) == file.split('/')[-1].split('_')[0] and file.endswith('.gif')]

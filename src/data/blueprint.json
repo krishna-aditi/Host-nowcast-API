@@ -1,8 +1,10 @@
 {
  "lat":37.318363,
- "lon":-84.224203,
- "radius": 100, 
+ "lon":-84.224203, 
+ "radius":200,
  "time_utc":"2019-06-02 18:33:00",
  "model_type":"gan",
- "closest_radius": "True"
+ "threshold_time_minutes":30,
+ "closest_radius":true,
+ "force_refresh":false
 }
