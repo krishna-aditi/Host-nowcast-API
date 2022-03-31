@@ -1,7 +1,11 @@
-Hosting SEVIR Nowcast API using Streamlit and Heroku
-==============================
+Hosting SEVIR Nowcast API using Google Cloud Platform and Streamlit
+=================================
 
 Report link (GoogleDoc): https://docs.google.com/document/d/1c7gdJsKIgaiENgDLAJ5hapSaJWJ9BEk5nKN7KPAmXxY/edit?usp=sharing
+
+GCP host link for FastAPI - Swagger UI: https://nowcast-api-test-345519.ue.r.appspot.com/docs
+
+Streamlit Cloud link: https://share.streamlit.io/krishna-aditi/host-nowcast-api/main/src/data/streamlit-app.py
 
 =============================================================
 
@@ -15,7 +19,21 @@ A better approach to solving this problem is by using the SEVIR Nowcast model wh
 
 #### Objective
 
-The goal of the project is to implement a REST API to execute the GAN model, which takes a sequence of 13 images as input and generates 12 images as output. The end users, who are a bunch of developers who want to integrate our API with their system, pass a JSON file as a blueprint with all required parameters through CURL, POSTMAN, or a Python-Client to execute the model. 
+The goal of the project is to implement a REST API to execute the GAN model, which takes a sequence of 13 images as input and generates 12 images as output. In this assignment we enable a User Interface on Streamlit. The module includes an API key authentication, only after which the user has access to the interface. All operations are enabled on Google Cloud Services. The final output is returned in the form of a GIF to the user. To overcome latency, the project also includes an Airflow module which will enable scheduling of the API run, so that the user can make use of cached images for closest location, instead of calling the model every single time. The list of inputs ingested by Airflow is supposed to be updated in a timely fashion.
+
+##### JSON blueprint
+```
+{
+ "lat":37.318363,
+ "lon":-84.224203, 
+ "radius":200,
+ "time_utc":"2019-06-02 18:33:00",
+ "model_type":"gan",
+ "threshold_time_minutes":30,
+ "closest_radius":true,
+ "force_refresh":false
+}
+```
 
 #### Requirements
 
@@ -36,19 +54,36 @@ To visualize the outputs basemap library is required, which needs to following l
 ```
 #### Streamlit
 
-- Run the streamlit app using command 
+- Run the streamlit app using command on local
 ```
 streamlit run app.py
 ```
 - You can access the app from your browser on https://localhost:8501
 
-#### Heroku 
+- Alternatively, since the application is already hosted on Streamlit cloud, it can be accessed using the following link
+    - Streamlit Cloud link: https://share.streamlit.io/krishna-aditi/host-nowcast-api/main/src/data/streamlit-app.py
 
-Heroku is a container-based cloud Platform as a Service (PaaS). Developers use Heroku to deploy, manage, and scale modern apps. Our platform is elegant, flexible, and easy to use, offering developers the simplest path to getting their apps to market. Heroku has a size limitation of 500MBs, due to which it was not possible to host the SEVIR Nowcast API on the server. This slugsize includes all the dependencies and the build of the API, which exceeds 500MBs under all circumstances.
+- NOTE: You must provide the API key to be able to access the streamlit interface. 
 
-#### Deta
+#### Airflow
 
-Deta — “the cloud for doers and dreamers” as mentioned on its home page — is a relatively new and fully free cloud service provider. It offers a developer-friendly interface that allows you to deploy your program to the cloud in a matter of seconds. 
+Apache Airflow is a workflow engine that will easily schedule and run your complex data pipelines. It will make sure that each task of your data pipeline will get executed in the correct order and each task gets the required resources. It provides amazing user interface to monitor and fix any issues that may arise.
+
+For our project, it ingests batchInputs.txt file from the Google Cloud Storage which contains a list of JSON inputs. It processes these requests in an hourly basis and stores the outcome in a cache directory in the Cloud Storage Bucket.
+```
+# Switch to your airflow directory and inititalize the database
+$ airflow db init
+
+# Create a user account for Airflow
+$ airflow users create --username admin --firstname <firstname> --lastname <lastname> --role Admin --email your@email.com
+
+# Start webserver at port of choice
+$ airflow webserver -p 8080
+ 
+# Run the scheduler which runs as timed, and helps monitor the workflow 
+$ airflow scheduler
+```
+
 
 #### References
 
@@ -113,3 +148,9 @@ Project Organization
 #### Submitted by:
 
 ![image](https://user-images.githubusercontent.com/37017771/153502035-dde7b1ec-5020-4505-954a-2e67528366e7.png)
+
+#### **Contribution**
+
+#### **Attestation:**
+
+WE ATTEST THAT WE HAVEN’T USED ANY OTHER STUDENTS’ WORK IN OUR ASSIGNMENT AND ABIDE BY THE POLICIES LISTED IN THE STUDENT HANDBOOK.
