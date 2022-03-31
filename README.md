@@ -52,6 +52,10 @@ To visualize the outputs basemap library is required, which needs to following l
 - h5py 2.8.0
 - matplotlib 3.2.0
 ```
+#### FastAPI web-framework
+
+![image](https://github.com/krishna-aditi/Host-nowcast-API/blob/main/reports/figures/fastapidocs.png)
+
 #### Streamlit
 
 - Run the streamlit app using command on local
@@ -64,6 +68,11 @@ streamlit run app.py
     - Streamlit Cloud link: https://share.streamlit.io/krishna-aditi/host-nowcast-api/main/src/data/streamlit-app.py
 
 - NOTE: You must provide the API key to be able to access the streamlit interface. 
+
+![image](https://github.com/krishna-aditi/Host-nowcast-API/blob/main/reports/figures/streamlit-1.png)
+![image](https://github.com/krishna-aditi/Host-nowcast-API/blob/main/reports/figures/streamlit-2.png)
+![image](https://github.com/krishna-aditi/Host-nowcast-API/blob/main/reports/figures/streamlit-3.png)
+![image](https://github.com/krishna-aditi/Host-nowcast-API/blob/main/reports/figures/streamlit-4.png)
 
 #### Airflow
 
