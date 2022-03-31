@@ -1,0 +1,50 @@
+[{
+ "lat":37.318363,
+ "lon":-84.224203, 
+ "radius":200,
+ "time_utc":"2019-06-02 18:33:00",
+ "model_type":"gan",
+ "threshold_time_minutes":30,
+ "closest_radius":True,
+ "force_refresh":False
+},
+{
+ "lat":30.54711887,
+ "lon":-92.28496258,
+ "radius":200,
+ "time_utc":"2019-06-25 21:59:00",
+ "model_type":"gan",
+ "threshold_time_minutes":30,
+ "closest_radius":True,
+ "force_refresh":False
+},
+{
+ "lat":35.9093752,
+ "lon":-100.2650416,
+ "radius":200,
+ "time_utc":"2019-06-15 05:05:00",
+ "model_type":"gan",
+ "threshold_time_minutes":30,
+ "closest_radius":True,
+ "force_refresh":False
+},
+{
+ "lat":44.59984523,
+ "lon":-100.3962065,
+ "radius":200,
+ "time_utc":"2019-06-11 19:40:00",
+ "model_type":"gan",
+ "threshold_time_minutes":30,
+ "closest_radius":True,
+ "force_refresh":False
+},
+{
+ "lat":30.58070007,
+ "lon":-91.57206541,
+ "radius":200,
+ "time_utc":"2019-06-07 13:09:00",
+ "model_type":"gan",
+ "threshold_time_minutes":30,
+ "closest_radius":True,
+ "force_refresh":False
+}]

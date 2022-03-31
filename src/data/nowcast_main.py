@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+
 # User database
 users_db = {
     "aditikrishna": {
@@ -43,6 +44,7 @@ users_db = {
     }
 }
 
+# https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/ for all authorization functions
 # To sign the JWT token we need a secret key like a signature generate one by typing this in yout console " !openssl rand -hex 32 "
 SECRET_KEY = 'a4e1f06420e88c39c20d056455c6dcab62f33b5c21761c8327599d0c6fd455ee' #signature to JWT
 ALGORITHM = "HS256" #algorithm to validate JWT        
@@ -194,6 +196,16 @@ def nowcast_predict(params: NowCastParams, current_user: User = Depends(get_curr
     else:
         return {"gif_path": output['display']}
 
+@app.post("/nowcast/batch") # authentication only for the admin
+def nowcast_list(params_list: List[NowCastParams], current_user: User = Depends(get_current_active_admin)):
+    # call out original nowcast function 
+    # pass the list of input
+    output = nowcastBatch(params_list)
+    if 'Error' in output.keys():
+        return {'nowcast_error': output['Error']}
+    else:
+        return {"gif_path": output['display']}
+    
 # Sample json body
 '''
 {
@@ -207,12 +219,3 @@ def nowcast_predict(params: NowCastParams, current_user: User = Depends(get_curr
  "force_refresh":false
 }
 '''
-@app.post("/nowcast/batch") # authentication only for the admin
-def nowcast_list(params_list: List[NowCastParams], current_user: User = Depends(get_current_active_admin)):
-    # call out original nowcast function 
-    # pass the list of input
-    output = nowcastBatch(params_list)
-    if 'Error' in output.keys():
-        return {'nowcast_error': output['Error']}
-    else:
-        return {"gif_path": output['display']}

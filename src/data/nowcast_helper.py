@@ -21,6 +21,8 @@ import tempfile
 import matplotlib.pyplot as plt
 import io
 plt.rcParams["figure.figsize"] = (8,8)
+import pathlib
+abspath = pathlib.Path(__file__).parent.resolve()
 
 ##############################################################################
 # Filtering Catalog 
@@ -32,7 +34,7 @@ def filterCatalog(lat, lon, radius, time_utc, catalog_path, closest_radius):
     catalog = catalog[catalog.img_type=='vil']
     
     # datetime filter
-    catalog = catalog.loc[(catalog.time_utc.dt.hour <= time.hour)&(catalog.time_utc.dt.hour >= time.hour - 1)]
+    catalog = catalog.loc[(catalog.time_utc.dt.day == time.day)&(catalog.time_utc.dt.month == time.month)&(catalog.time_utc.dt.year == time.year)&(catalog.time_utc.dt.hour <= time.hour)&(catalog.time_utc.dt.hour >= time.hour - 1)]
     
     # pct_missing filter
     catalog = catalog[catalog.pct_missing==0]
@@ -65,11 +67,12 @@ def filterCatalog(lat, lon, radius, time_utc, catalog_path, closest_radius):
 #filename = 'vil/2019/SEVIR_VIL_STORMEVENTS_2019_0101_0630.h5'
 #filename = 'CATALOG.csv'
 #filename = 'models/nowcast/gan_generator.h5'
-    
+
+# Flush cache folder    
 def flushCache(folder, file):
     try:
         project_name = 'Assignment-4'
-        credentials = "cred.json"
+        credentials = os.path.join(abspath,"cred.json")
         FS = gcsfs.GCSFileSystem(project=project_name, token=credentials)
         
         files = FS.ls(folder)
@@ -82,9 +85,10 @@ def flushCache(folder, file):
     except Exception:
         raise Exception('Cache Error: Could not flush Cache')
     
+# Read from cloud
 def readDataFromCloud(file_path, file_type, fileindex=0):
     project_name = 'Assignment-4'
-    credentials = "cred.json"
+    credentials = os.path.join(abspath,"cred.json")
     FS = gcsfs.GCSFileSystem(project=project_name, token=credentials)
     try:
         with FS.open(file_path, 'rb') as data_file:
@@ -94,6 +98,9 @@ def readDataFromCloud(file_path, file_type, fileindex=0):
             elif file_type=='model':
                 model_file = h5py.File(data_file,'r')
                 return tf.keras.models.load_model(model_file, compile=False, custom_objects = {"tf": tf})
+            elif file_type=='input':
+                json_ = eval(data_file.read())
+                return json_
             elif file_type=='data':
                 f = h5py.File(data_file,'r')
                 try:
@@ -103,13 +110,14 @@ def readDataFromCloud(file_path, file_type, fileindex=0):
                     raise Exception(f'Data Error: {file_path} File Corrupt. Check fileindex {fileindex}')
                 return np.stack((x1,x2,x3))
             else:
-                return data_file.open()
+                return data_file.read()
     except Exception:
         raise Exception(f'Data Error: Could not find the file {file_path}')
 
+# Write to cloud
 def writeDataToCloud(data, file_path, file_type,time_utc=''):
     project_name = 'Assignment-4'
-    credentials = "cred.json"
+    credentials = os.path.join(abspath,"cred.json")
     FS = gcsfs.GCSFileSystem(project=project_name, token=credentials)
     file_path = file_path.replace('\\','/')
     try:
@@ -158,14 +166,14 @@ def writeDataToCloud(data, file_path, file_type,time_utc=''):
                 # Delete file path of temp file
                 os.unlink(temp.name)
                 # Saving files as GIF (https://stackoverflow.com/questions/41228209/making-gif-from-images-using-imageio-in-python)
-            except:
-                raise Exception('IO Error: Could not write GIF. Try reinstalling matplotlib (version<=3.2.0) and imageio')
+            except Exception as e:
+                raise Exception(f'IO Error: Could not write GIF. Try reinstalling matplotlib (version<=3.2.0) and imageio {e}')
         else:
             pass
         # Return cloud path of saved GIF file
         return FS.url(file_path).replace('googleapis','cloud.google')
-    except Exception:
-        raise Exception('Output Error: Error writing data to Google Cloud Bucket')
+    except Exception as e:
+        raise Exception(f'Output Error: Error writing data to Google Cloud Bucket {e}')
 
 ############################################################################## 
 # Defining our own data generator with the help of make_nowcast_dataset 
@@ -176,7 +184,7 @@ def get_nowcast_data(lat, lon, radius, time_utc, catalog_path, data_path, closes
     exists = False
     # Access GCP bucket
     project_name = 'Assignment-4'
-    credentials = "cred.json"
+    credentials = os.path.join(abspath,"cred.json")
     FS = gcsfs.GCSFileSystem(project=project_name, token=credentials)
     # Threshold to check if GIFs are older than x minutes
     threshold = threshold_time_minutes*60
@@ -193,21 +201,14 @@ def get_nowcast_data(lat, lon, radius, time_utc, catalog_path, data_path, closes
                     # Date in exsisting output files (stored in their name after '_')
                     
                     # Time_utc on input h5 file initially
-                    outdate = dateutil.parser.parse(file.split('_')[1])
                     # Output generation datetime
                     gendate = dateutil.parser.parse(file.split('_')[2][:-4])
-                    # User input datetime
-                    userdate = dateutil.parser.parse(time_utc)
-                    # Check if userdate and outputdate is greater than 2 hours
-                    if (userdate - outdate).seconds < 2*60*60:
-                        # Matching file found
-                        print('Got a hit')
-                        # Check if file is older than acceptable threshold
-                        if (datetime.datetime.now() - gendate).seconds < threshold:
-                            # Match found!
-                            print('With in threshold')
-                            exists = True
-                            break
+                    # Check if file is older than acceptable threshold
+                    if (datetime.datetime.now() - gendate).seconds < threshold:
+                        # Match found!
+                        print('With in threshold')
+                        exists = True
+                        break
             except Exception:
                 # If matching file not found, need to generate new output, use force_refresh!
                 raise Exception('Output Catalog Error: Try using force_refresh="True"')

@@ -9,6 +9,9 @@ import requests
 import base64
 import gcsfs
 from urllib.parse import unquote
+import pathlib
+import os
+abspath = pathlib.Path(__file__).parent.resolve()
 def main():
     st.title("API for Federal Avaiation Administration")
     html_temp = """
@@ -21,27 +24,27 @@ def main():
     password = st.text_input("Password: ", type="password")
     
     authjson = { "username": f"{username}", "password": f"{password}"}
+
     s = st.session_state
     if not s:
         s.authenticated = False
     col1, col2 = st.columns([0.2,1])
     if col1.button("Login")  or s.authenticated:
         s.authenticated = True
-        token = requests.post("http://127.0.0.1:8000/token", data = authjson)
+        token = requests.post("https://nowcast-api-test-345519.ue.r.appspot.com/token", data = authjson)
         if col2.button("Log Out"):
             s.authenticated = False
             token = None
             jwttoken = None
             st.markdown(f"Log Out Successful")
             return None
-                
-            
-                        
-        if token.status_code == 200: # success
-            # Authentication params
+        
+        # Login successful        
+        if token.status_code == 200: 
+            # Headers
             jwttoken = token.json()['access_token']
             headers = {"Authorization": f"Bearer {jwttoken}"}
-            # User input params
+            # Params by user
             lat = st.number_input("Latitude:", format="%.6f")
             lon = st.number_input("Longitude:", format="%.6f")
             radius = st.number_input("Radius:")
@@ -54,15 +57,17 @@ def main():
             # Parameters as JSON
             params_test = {"lat": lat, "lon": lon, "radius": radius, "time_utc": time_utc, "model_type": model_type, "threshold_time_minutes": threshold_time_minutes, "closest_radius": bool(closest_radius), "forced_refresh": bool(forced_refresh)}
             
-            
+            # Perform nowcast
             if st.button("Predict"):
-                nowcast_test = requests.post("http://127.0.0.1:8000/nowcast/predict", headers=headers, json = params_test)      
+                nowcast_test = requests.post("https://nowcast-api-test-345519.ue.r.appspot.com/nowcast/predict", headers=headers, json = params_test)      
                 sevir_output_test = nowcast_test.json()
+                # Check for error, if any
                 if 'nowcast_error' in sevir_output_test.keys():
                     st.error({'nowcast_error': sevir_output_test['nowcast_error']})
                 else:
+                    # Read output from bucket
                     st.success('Nowcasted GIF for the requested inputs: ')
-                    # Decoding the gif_path on GCS to enable it to read 
+                    # Path handling with regex
                     decoded = unquote(sevir_output_test['gif_path'])
                     path = ''
                     append=False
@@ -72,14 +77,15 @@ def main():
                         if a=='sevir-vil':
                             path+=a
                             append=True
-                    # GCS authentication        
+                    # Connect to bucket        
                     project_name = 'Assignment-4'
-                    credentials = "cred.json"
+                    credentials = os.path.join(abspath,"cred.json")
                     FS = gcsfs.GCSFileSystem(project=project_name, token=credentials)
                     with FS.open(path, 'rb') as data_file:                
                         gif_content = data_file.read()
                     data_url = base64.b64encode(gif_content).decode("utf-8")
                     st.markdown(f'<p align="center"><img src="data:image/gif;base64,{data_url}" alt="Nowcasted GIF"></p>', unsafe_allow_html=True)
+       # Login failed
         else:
             st.markdown(f"Login Failure. {token.json()['detail']}")
     return None
