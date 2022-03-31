@@ -7,7 +7,7 @@ GCP host link for FastAPI - Swagger UI: https://nowcast-api-test-345519.ue.r.app
 
 Streamlit Cloud link: https://share.streamlit.io/krishna-aditi/host-nowcast-api/main/src/data/streamlit-app.py
 
-============================================================================
+==========================================================================
 
 Weather briefing is a vital part of any flight preparation. The National Weather Service (NWS), Federal Aviation Administration (FAA), Department of Defense and other aviation groups are responsible for coherent and accurate weather reporting. The combined efforts of thorough scientific study and modeling techniques are able to predict the weather patterns with increasing accuracy. These weather forecasts enable pilots to make informed decisions regarding weather and flight safety.
 
@@ -149,7 +149,7 @@ Project Organization
 
 ![image](https://user-images.githubusercontent.com/37017771/153502035-dde7b1ec-5020-4505-954a-2e67528366e7.png)
 
-#### **Contribution**
+#### **Contribution:**
 
 #### **Attestation:**
 
