@@ -92,7 +92,8 @@ $ airflow webserver -p 8080
 # Run the scheduler which runs as timed, and helps monitor the workflow 
 $ airflow scheduler
 ```
-
+![image](https://github.com/krishna-aditi/Host-nowcast-API/blob/main/reports/figures/dags-list.png)
+![image](https://github.com/krishna-aditi/Host-nowcast-API/blob/main/reports/figures/nowcast-dag.png)
 
 #### References
 
