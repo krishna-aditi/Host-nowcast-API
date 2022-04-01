@@ -108,11 +108,13 @@ $ airflow scheduler
 - https://fastapi.tiangolo.com/deployment/deta/
 - https://devcenter.heroku.com/articles/error-codes#h10-app-crashed
 - https://www.youtube.com/watch?v=XD7euLOzKbs&ab_channel=SFPython
+- https://medium.com/google-cloud/set-up-anaconda-under-google-cloud-vm-on-windows-f71fc1064bd7
 - https://medium.com/apache-airflow/a-simple-guide-to-start-using-apache-airflow-2-on-google-cloud-1811c2127445
 - https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/
 - https://www.analyticsvidhya.com/blog/2020/11/getting-started-with-apache-airflow/
 - https://www.tutlinks.com/deploy-fastapi-app-on-google-cloud-platform/
 - https://cloud.google.com/appengine/docs/standard#instance_classes
+
 
 Project Organization
 ------------
