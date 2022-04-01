@@ -52,6 +52,11 @@ To visualize the outputs basemap library is required, which needs to following l
 - h5py 2.8.0
 - matplotlib 3.2.0
 ```
+
+#### Workflow architecture
+
+![image](https://github.com/krishna-aditi/Host-nowcast-API/blob/main/reports/figures/Workflow.png)
+
 #### FastAPI web-framework
 
 ![image](https://github.com/krishna-aditi/Host-nowcast-API/blob/main/reports/figures/fastapidocs.png)
